@@ -1,12 +1,12 @@
-# Haiku/arm64용 Node.js (RenkuOS)
+# RenkuOS/arm64용 Node.js
 
 [English](README.md) | [한국어](README.ko.md)
 
-Haiku ARM64에서 네이티브로 빌드한 Node.js 24.21.0에 대한 패키징 노트와
+RenkuOS ARM64에서 네이티브로 빌드한 Node.js 24.21.0에 대한 패키징 노트와
 스크립트입니다. 같은 이미지의 `golang_bin`이나 `fastfetch`와 달리, Node
 자신의 빌드(gyp/ninja, 그리고 V8 시작 스냅샷을 만들기 위해 방금 빌드한
 `node_mksnapshot`을 타깃 자체에서 실행하는 과정)는 교차 컴파일이 아니라
-Haiku 위에서 네이티브로 돌아가야 합니다 — 이 저장소는 그 빌드에 실제로
+RenkuOS 위에서 네이티브로 돌아가야 합니다 — 이 저장소는 그 빌드에 실제로
 필요했던 유일한 의존성 수정, 그 결과물의 패키징, 그리고 실제 Next.js
 앱을 SSH로 스트레스 테스트하며 찾아서 고친 두 가지 실제 버그를 담고
 있습니다. 대부분의 사용자가 패키징된 바이너리에 실제로 닿는 경로가 바로
@@ -22,7 +22,7 @@ libuv, libbrotlicommon/dec/enc, libcares/libnghttp2는 이 Node 릴리스가
 한 단계 낮았습니다(번들된 `deps/uv`가 요구하는 1.52.1 대신 1.49.2) —
 `uv_statfs_s`에는 이름이 바뀐 `f_frsize` 필드가 없었고, `uv_thread_setname`은
 아예 존재하지 않았습니다. Node 자신이 번들한 `deps/uv` 소스(이미 자체
-Haiku 포트를 갖고 있음 — `src/unix/haiku.c`, `CMakeLists.txt`의
+RenkuOS 포트를 갖고 있음 — `src/unix/haiku.c`, `CMakeLists.txt`의
 `CMAKE_SYSTEM_NAME STREQUAL "Haiku"` 분기 — 패치 불필요)로 직접 교차
 빌드해서, 구조적으로 정확한 버전 일치를 보장하도록 고쳤습니다.
 

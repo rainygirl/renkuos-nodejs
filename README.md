@@ -1,12 +1,12 @@
-# Node.js for Haiku/arm64 (RenkuOS)
+# Node.js for RenkuOS/arm64
 
 [English](README.md) | [한국어](README.ko.md)
 
-Packaging notes and scripts for a native Node.js 24.21.0 build on Haiku
+Packaging notes and scripts for a native Node.js 24.21.0 build on RenkuOS
 ARM64. Unlike `golang_bin` or `fastfetch` on this same image, Node's own
 build (gyp/ninja, plus running the freshly built `node_mksnapshot` on the
 target itself to generate the V8 startup snapshot) has to run natively on
-Haiku, not cross-compiled -- this repo is the one real dependency fix that
+RenkuOS, not cross-compiled -- this repo is the one real dependency fix that
 build needed, the resulting packaging, and the two real bugs found (and
 fixed) stress-testing a real Next.js app over SSH, the only way most users
 actually reach a packaged binary like this.
@@ -22,7 +22,7 @@ node-v24.21.0 requires (1.49.2 vs. the 1.52.1 its bundled `deps/uv`
 expects): `uv_statfs_s` was missing the renamed `f_frsize` field, and
 `uv_thread_setname` didn't exist at all. Fixed by cross-building libuv
 straight from Node's own bundled `deps/uv` source (which already carries
-its own Haiku port -- `src/unix/haiku.c`, a `CMakeLists.txt` branch for
+its own RenkuOS port -- `src/unix/haiku.c`, a `CMakeLists.txt` branch for
 `CMAKE_SYSTEM_NAME STREQUAL "Haiku"` -- no patching needed), guaranteeing
 an exact version match by construction.
 
