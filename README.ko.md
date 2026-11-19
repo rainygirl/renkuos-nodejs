@@ -16,6 +16,16 @@ libuv, libbrotlicommon/dec/enc, libcares/libnghttp2는 이 Node 릴리스가
 필요로 하는 정확한 버전으로 함께 패키징했습니다. openssl3, icu74, zlib은
 베이스 시스템이 이미 제공하므로 그대로 둡니다.
 
+## 미리 빌드된 패키지 설치
+
+RenkuOS arm64 이미지에서는 대부분 직접 빌드할 필요가 없습니다 — 패키징된
+바이너리는 이 프로젝트 자체의 pkgman 저장소에 배포되어 있습니다:
+
+```sh
+pkgman add-repo https://pkgman.rainygirl.com/arm64   # 시스템당 한 번만
+pkgman install nodejs_bin
+```
+
 ## 빌드 시점의 유일한 수정: `scripts/cross-arm64-libuv.sh`
 
 빌드 이미지에 미리 올려져 있던 libuv가 node-v24.21.0이 요구하는 버전보다

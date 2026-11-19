@@ -15,6 +15,16 @@ Bundles libuv, libbrotlicommon/dec/enc and libcares/libnghttp2 at the
 exact versions this Node release needs; openssl3, icu74 and zlib are left
 to the base system, which already provides them.
 
+## Installing the prebuilt package
+
+On a RenkuOS arm64 image, most users never build this at all -- the
+packaged binary is published to this project's own pkgman repository:
+
+```sh
+pkgman add-repo https://pkgman.rainygirl.com/arm64   # once per system
+pkgman install nodejs_bin
+```
+
 ## The one build-time fix: `scripts/cross-arm64-libuv.sh`
 
 A pre-staged libuv on the build image was a version behind what
