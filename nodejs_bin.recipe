@@ -1,0 +1,63 @@
+SUMMARY="Node.js JavaScript runtime for Haiku ARM64"
+DESCRIPTION="Native Node.js 24.21.0 runtime for Haiku ARM64, built from upstream source \
+directly on a Haiku arm64 VM, not cross-built in the haiku-builder container like \
+golang_bin or fastfetch -- Node's own build (gyp/ninja, plus running the freshly built \
+node_mksnapshot on the target itself to generate the V8 startup snapshot) needs to run \
+natively, not just cross-compile. Bundles libuv, libbrotlicommon/dec/enc and \
+libcares/libnghttp2 runtimes, since those are not separately on this repository and/or \
+not at the version this Node needs; openssl3, icu74 and zlib are left to the base \
+system, which already provides them (confirmed present under /boot/system/lib on the \
+RENKU arm64 image). Revision 2 fixes two issues found stress-testing a real Next.js app \
+over SSH, the only way most users reach this package: (1) this image's icu74 is a \
+bootstrap-only stub, with the real ICU data file at /boot/system/data/icu/74.1 -- only \
+the desktop launch target's SetupEnvironment set ICU_DATA to it, so any Intl use (new \
+Intl.DateTimeFormat, npm's own string-locale-compare) crashed or threw under sshd; bin/node \
+is now a wrapper that sets ICU_DATA before exec'ing the real binary, which moved to \
+bin/node-real. (2) npm/npx were never wired up (node_install_npm was false); bin/npm and \
+bin/npx are now wrapper scripts over a packaged copy of Node's own bundled npm CLI \
+(deps/npm, minus its test/docs/man trees), staged at lib/node/npm. Next.js note (supersedes \
+an earlier, incorrect caveat here blaming the WASM SWC fallback itself): next-swc has no \
+haiku/arm64 native build, but Next.js's WASM fallback (auto-downloaded from \
+@next/swc-wasm-nodejs on the first 'next build', landing itself at the exact \
+node_modules/next/wasm/@next/swc-wasm-nodejs path its own loader expects, no npm/PATH \
+issue once this package's npm/npx wrappers are installed) works correctly and needs no \
+manual file placement -- confirmed by instrumenting next/dist/build/swc/index.js directly: \
+every SWC transform call during a real build succeeds (isWasm=true, valid output) across \
+100+ modules. The actual failure some users hit ('next build' erroring with \"'import' and \
+'export' may appear only with sourceType: module\" on every app/*.js file) is unrelated to \
+this package, to SWC, or to WASM: it is triggered by 'npm init -y' (this npm 11 CLI's \
+default behavior) writing an explicit \"type\": \"commonjs\" into package.json, which \
+Next.js 15's webpack config handles differently from a package.json with no \"type\" field \
+at all (the common case for most real Next.js projects, including ones scaffolded with \
+create-next-app) -- with the explicit field present, webpack parses the SWC-transformed \
+app-router output with the wrong sourceType and the build fails; remove that field (or never \
+add it) and the exact same WASM-backed build succeeds. Confirmed end to end twice, from \
+'npm init -y' through a real HTTP 200 from curl against 'next start', by deleting the \
+\"type\" field from package.json before building -- no SWC/WASM file placement, postinstall \
+hook, or nodejs_bin change needed."
+HOMEPAGE="https://nodejs.org/"
+VERSION="24.21.0"
+REVISION="2"
+LICENSE="MIT"
+COPYRIGHT="2009-2026 Node.js contributors"
+ARCHITECTURES_SUPPORTED="arm64"
+
+PROVIDES="nodejs_bin = $VERSION
+cmd:node = $VERSION
+cmd:npm = $VERSION
+cmd:npx = $VERSION"
+REQUIRES="haiku"
+
+NOTE="built natively on a Haiku arm64 VM, not cross-built: see scripts/cross-arm64-libuv.sh \
+for the one real dependency fix this needed (a pre-staged libuv was a version behind what \
+this Node release requires, missing uv_thread_setname entirely -- rebuilt from Node's own \
+bundled deps/uv source for an exact version match). The .hpkg under prebuilt/arm64/ was \
+produced by staging out/Release/node (stripped) plus the four bundled .so runtimes above, \
+packaged and install-tested with the target's own native package/pkgman tools. Revision 2 \
+renames the real binary to bin/node-real and adds bin/node/bin/npm/bin/npx wrapper scripts \
+(export ICU_DATA=/boot/system/data/icu/74.1, exec the real binary) plus a packaged copy of \
+Node's own bundled npm CLI (deps/npm, test/docs/man excluded) staged at lib/node/npm -- \
+fixing Intl crashes and the missing npm/npx under SSH sessions, found stress-testing a real \
+Next.js 15.1.6 app end to end."
+
+PREBUILT_PACKAGES="pkgman-repo/prebuilt/arm64/nodejs_bin-$VERSION-$REVISION-arm64.hpkg"
