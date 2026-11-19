@@ -26,6 +26,32 @@ pkgman add-repo https://pkgman.rainygirl.com/arm64   # 시스템당 한 번만
 pkgman install nodejs_bin
 ```
 
+## 빌드하고 패키징하기
+
+Node 자신의 빌드(gyp/ninja, 그리고 방금 빌드한 `node_mksnapshot`을 타깃
+자체에서 실행하는 과정)는 RenkuOS arm64 머신 위에서 네이티브로 돌리는
+보통의 업스트림 빌드입니다 — 이 부분은 스크립트화되어 있지 않습니다:
+
+```sh
+./configure
+make -j$(nproc)
+```
+
+`scripts/cross-arm64-libuv.sh`가 고쳐야 했던 유일한 런타임 의존성을
+빌드하고(아래 설명), `scripts/stage-nodejs-package.sh`가 빌드된
+체크아웃 — `bin/node-real`, `bin/node`/`bin/npm`/`bin/npx` 래퍼, 번들된
+npm CLI, 네 개의 런타임 라이브러리 — 을 설치 가능한 `.hpkg`로
+패키징합니다. 똑같이 같은 머신에서 실행합니다:
+
+```sh
+NODE_SRC=/path/to/node-v24.21.0 LIBDIR=/path/to/the/four/.so/files \
+  sh scripts/stage-nodejs-package.sh
+```
+
+실제 배포된 `nodejs_bin-24.21.0-2` 패키지와 구조적으로 대조해
+검증했습니다: 이미 빌드되고 스테이징된 파일들로 이 스크립트를 다시
+돌려보면 동일한 파일 트리가 그대로 재현됩니다.
+
 ## 빌드 시점의 유일한 수정: `scripts/cross-arm64-libuv.sh`
 
 빌드 이미지에 미리 올려져 있던 libuv가 node-v24.21.0이 요구하는 버전보다

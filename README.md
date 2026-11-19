@@ -25,6 +25,32 @@ pkgman add-repo https://pkgman.rainygirl.com/arm64   # once per system
 pkgman install nodejs_bin
 ```
 
+## Building and packaging it
+
+Node's own build (gyp/ninja, plus running the freshly built
+`node_mksnapshot` on the target itself) is the ordinary upstream build,
+run natively on a RenkuOS arm64 machine -- that part isn't scripted here:
+
+```sh
+./configure
+make -j$(nproc)
+```
+
+`scripts/cross-arm64-libuv.sh` builds the one runtime dependency that
+needed fixing (see below); `scripts/stage-nodejs-package.sh` then stages
+the built checkout -- `bin/node-real`, the `bin/node`/`bin/npm`/`bin/npx`
+wrappers, the bundled npm CLI, and the four runtime libraries -- into the
+installable `.hpkg`, run the same way, on the same machine:
+
+```sh
+NODE_SRC=/path/to/node-v24.21.0 LIBDIR=/path/to/the/four/.so/files \
+  sh scripts/stage-nodejs-package.sh
+```
+
+Verified structurally against the actual published `nodejs_bin-24.21.0-2`
+package: re-running this script against the already-built, already-staged
+files it would have produced reproduces the identical file tree.
+
 ## The one build-time fix: `scripts/cross-arm64-libuv.sh`
 
 A pre-staged libuv on the build image was a version behind what
