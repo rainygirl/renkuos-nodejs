@@ -37,20 +37,33 @@ Node 자신의 빌드(gyp/ninja, 그리고 방금 빌드한 `node_mksnapshot`을
 make -j$(nproc)
 ```
 
-`scripts/cross-arm64-libuv.sh`가 고쳐야 했던 유일한 런타임 의존성을
-빌드하고(아래 설명), `scripts/stage-nodejs-package.sh`가 빌드된
-체크아웃 — `bin/node-real`, `bin/node`/`bin/npm`/`bin/npx` 래퍼, 번들된
-npm CLI, 네 개의 런타임 라이브러리 — 을 설치 가능한 `.hpkg`로
-패키징합니다. 똑같이 같은 머신에서 실행합니다:
+이 릴리스가 필요로 하는 런타임 라이브러리를 만드는 교차 빌드 스크립트가
+네 개 있고, 각각 Node 자신이 번들한 `deps/` 소스로부터 빌드해서 구조적으로
+정확한 버전 일치를 보장합니다: `scripts/cross-arm64-libuv.sh`(실제로 고쳐야
+했던 것, 아래 설명), 그리고 새로 추가된 `scripts/cross-arm64-brotli.sh`,
+`scripts/cross-arm64-cares.sh`, `scripts/cross-arm64-nghttp2.sh` — 넷 다
+`golang_bin`이 쓰는 것과 같은 교차 빌드 컨테이너 `haiku-builder` 안에서
+실행합니다. 그다음 `scripts/stage-nodejs-package.sh`가 빌드된 체크아웃 —
+`bin/node-real`, `bin/node`/`bin/npm`/`bin/npx` 래퍼, 번들된 npm CLI, 네 개의
+런타임 라이브러리 — 을 설치 가능한 `.hpkg`로 패키징합니다. 네이티브 빌드
+머신에서 실행합니다:
 
 ```sh
 NODE_SRC=/path/to/node-v24.21.0 LIBDIR=/path/to/the/four/.so/files \
   sh scripts/stage-nodejs-package.sh
 ```
 
+`scripts/build-nodejs-native.sh`가 전체 과정을 엮습니다 — 네 라이브러리가
+스테이징됐는지 확인하고, Node 자신의 네이티브 `./configure && make`를
+돌린 뒤, `stage-nodejs-package.sh`를 호출합니다 — 다만 아무것도 미리
+준비되지 않은 처음부터의 체크아웃으로 전체를 한 번에 끝까지 돌려본 적은
+아직 없습니다. 각 조각은 따로따로 검증돼 있습니다(정확히 무엇을
+확인했는지는 각 스크립트 자신의 헤더 참고).
+
 실제 배포된 `nodejs_bin-24.21.0-2` 패키지와 구조적으로 대조해
-검증했습니다: 이미 빌드되고 스테이징된 파일들로 이 스크립트를 다시
-돌려보면 동일한 파일 트리가 그대로 재현됩니다.
+검증했습니다: 이미 빌드되고 스테이징된 파일들로
+`stage-nodejs-package.sh`를 다시 돌려보면 동일한 파일 트리가 그대로
+재현됩니다.
 
 ## 빌드 시점의 유일한 수정: `scripts/cross-arm64-libuv.sh`
 
@@ -61,6 +74,20 @@ NODE_SRC=/path/to/node-v24.21.0 LIBDIR=/path/to/the/four/.so/files \
 RenkuOS 포트를 갖고 있음 — `src/unix/haiku.c`, `CMakeLists.txt`의
 `CMAKE_SYSTEM_NAME STREQUAL "Haiku"` 분기 — 패치 불필요)로 직접 교차
 빌드해서, 구조적으로 정확한 버전 일치를 보장하도록 고쳤습니다.
+
+## 나머지 세 라이브러리에서 발견한 버전 드리프트
+
+Node v24.21.0이 실제로 번들한 소스로 `brotli`와 `c-ares`를 빌드하면
+(`scripts/cross-arm64-brotli.sh`, `scripts/cross-arm64-cares.sh`)
+`libbrotli{common,dec,enc}.so.1.2.0`과 `libcares.so.2.19.7`이 나오는데,
+이는 이 패키지에 이미 스테이징된 라이브러리(각각 `1.1.0`, `2.19.3`)보다
+패치 버전이 하나 앞선 것입니다. 둘 다 SONAME은 호환됩니다(메이저 버전이
+각각 1과 2로 동일) — 스테이징된 버전이 이 패키지가 실제로 빌드되고
+테스트된 대상이므로 당장 고장난 건 없지만, 이 두 라이브러리는 libuv의
+수정이 고집한 것과 같은 정확한 버전 일치로 빌드된 게 아니었다는 뜻입니다.
+다음에 다시 빌드할 때는 스크립트의 결과물을 쓰는 게 낫습니다.
+`libnghttp2`(`scripts/cross-arm64-nghttp2.sh`)는 정확히 일치합니다
+(`14.29.5`).
 
 ## 실제 Next.js 앱을 스트레스 테스트하며 찾은 두 가지 실제 버그
 

@@ -36,20 +36,34 @@ run natively on a RenkuOS arm64 machine -- that part isn't scripted here:
 make -j$(nproc)
 ```
 
-`scripts/cross-arm64-libuv.sh` builds the one runtime dependency that
-needed fixing (see below); `scripts/stage-nodejs-package.sh` then stages
-the built checkout -- `bin/node-real`, the `bin/node`/`bin/npm`/`bin/npx`
-wrappers, the bundled npm CLI, and the four runtime libraries -- into the
-installable `.hpkg`, run the same way, on the same machine:
+Four cross-build scripts produce the runtime libraries this release
+needs, each from Node's own vendored `deps/` source for an exact version
+match by construction: `scripts/cross-arm64-libuv.sh` (the one that
+actually needed a real fix, see below), and, newly added,
+`scripts/cross-arm64-brotli.sh`, `scripts/cross-arm64-cares.sh`, and
+`scripts/cross-arm64-nghttp2.sh` -- all four run inside `haiku-builder`,
+the same cross-build container `golang_bin` uses. `scripts/stage-nodejs-
+package.sh` then stages the built checkout -- `bin/node-real`, the
+`bin/node`/`bin/npm`/`bin/npx` wrappers, the bundled npm CLI, and the
+four runtime libraries -- into the installable `.hpkg`, run on the
+native build machine:
 
 ```sh
 NODE_SRC=/path/to/node-v24.21.0 LIBDIR=/path/to/the/four/.so/files \
   sh scripts/stage-nodejs-package.sh
 ```
 
+`scripts/build-nodejs-native.sh` orchestrates the whole thing -- checks
+the four libraries are staged, runs Node's own native `./configure &&
+make`, then calls `stage-nodejs-package.sh` -- though running all of it
+back to back, on one from-scratch checkout with nothing pre-staged, has
+not itself been done; each piece is verified separately (see each
+script's own header for exactly what was checked).
+
 Verified structurally against the actual published `nodejs_bin-24.21.0-2`
-package: re-running this script against the already-built, already-staged
-files it would have produced reproduces the identical file tree.
+package: re-running `stage-nodejs-package.sh` against the already-built,
+already-staged files it would have produced reproduces the identical
+file tree.
 
 ## The one build-time fix: `scripts/cross-arm64-libuv.sh`
 
@@ -61,6 +75,21 @@ straight from Node's own bundled `deps/uv` source (which already carries
 its own RenkuOS port -- `src/unix/haiku.c`, a `CMakeLists.txt` branch for
 `CMAKE_SYSTEM_NAME STREQUAL "Haiku"` -- no patching needed), guaranteeing
 an exact version match by construction.
+
+## A version-drift finding in the other three libraries
+
+Building `brotli` and `c-ares` from Node v24.21.0's actual vendored
+source (`scripts/cross-arm64-brotli.sh`, `scripts/cross-arm64-cares.sh`)
+produces `libbrotli{common,dec,enc}.so.1.2.0` and `libcares.so.2.19.7` --
+one patch version *ahead* of what this package's own already-staged
+libraries actually are (`1.1.0` and `2.19.3` respectively). Both are
+SONAME-compatible either way (major version 1 and 2 respectively, in
+both cases), and the staged versions are what this package was actually
+built and tested against, so nothing here is broken -- but it means
+those two libraries weren't built from an exact version match the way
+libuv's fix insists on; a future rebuild should prefer the scripts'
+output. `libnghttp2` (`scripts/cross-arm64-nghttp2.sh`) matches exactly
+(`14.29.5`).
 
 ## Two real bugs, found stress-testing a real Next.js app
 

@@ -51,9 +51,21 @@ REQUIRES="haiku"
 NOTE="built natively on a Haiku arm64 VM, not cross-built: see scripts/cross-arm64-libuv.sh \
 for the one real dependency fix this needed (a pre-staged libuv was a version behind what \
 this Node release requires, missing uv_thread_setname entirely -- rebuilt from Node's own \
-bundled deps/uv source for an exact version match). The .hpkg under prebuilt/arm64/ was \
-produced by staging out/Release/node (stripped) plus the four bundled .so runtimes above, \
-packaged and install-tested with the target's own native package/pkgman tools. Revision 2 \
+bundled deps/uv source for an exact version match). The other three bundled runtimes (brotli, \
+c-ares, nghttp2) now also have their own cross-build scripts -- cross-arm64-brotli.sh, \
+cross-arm64-cares.sh, cross-arm64-nghttp2.sh, written and verified after the fact against \
+node v24.21.0's actual vendored deps/ sources; building from scratch with them gives \
+libbrotli{common,dec,enc}.so.1.2.0 and libcares.so.2.19.7, one patch version ahead of what \
+this package's own staged libs (1.1.0, 2.19.3) actually are -- SONAME-compatible either way, \
+and the staged versions are what this package was actually built and tested against, but \
+prefer the scripts' output on a future rebuild. libnghttp2 matches exactly (14.29.5). \
+scripts/build-nodejs-native.sh orchestrates the whole thing -- the four library cross-builds \
+above (run inside haiku-builder), then this script's own native ./configure && make, then \
+scripts/stage-nodejs-package.sh -- though running all of it back to back on one from-scratch \
+checkout has not itself been done; each piece was verified separately (see each script's own \
+header). The .hpkg under prebuilt/arm64/ was produced by staging out/Release/node (stripped) \
+plus the four bundled .so runtimes above, packaged and install-tested with the target's own \
+native package/pkgman tools. Revision 2 \
 renames the real binary to bin/node-real and adds bin/node/bin/npm/bin/npx wrapper scripts \
 (export ICU_DATA=/boot/system/data/icu/74.1, exec the real binary) plus a packaged copy of \
 Node's own bundled npm CLI (deps/npm, test/docs/man excluded) staged at lib/node/npm -- \
