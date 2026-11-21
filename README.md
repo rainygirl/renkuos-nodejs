@@ -25,6 +25,15 @@ pkgman add-repo https://pkgman.rainygirl.com/arm64   # once per system
 pkgman install nodejs_bin
 ```
 
+`scripts/smoke-test-nodejs.sh` is a quick post-install check, run on the
+same machine: a basic eval, `Intl` under a non-desktop session, and
+`npm`/`npx` actually running -- the exact paths this package's own
+revision 2 fixed.
+
+```sh
+sh scripts/smoke-test-nodejs.sh
+```
+
 ## Building and packaging it
 
 Node's own build (gyp/ninja, plus running the freshly built

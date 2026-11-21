@@ -48,7 +48,21 @@ cmd:npm = $VERSION
 cmd:npx = $VERSION"
 REQUIRES="haiku"
 
-NOTE="built natively on a Haiku arm64 VM, not cross-built: see scripts/cross-arm64-libuv.sh \
+# Provenance of the upstream source this was built from -- not a
+# haikuporter SOURCE_URI/CHECKSUM_SHA256 this recipe can actually be
+# built with (see NOTE below), but the exact same values HaikuPorts'
+# own net-libs/nodejs recipe uses, confirmed by downloading and hashing
+# this URL directly.
+SOURCE_URI="https://nodejs.org/dist/v$VERSION/node-v$VERSION.tar.gz"
+SOURCE_DIR="node-v$VERSION"
+CHECKSUM_SHA256="622424efb5dc0c26c93fbb619ff10737ee289c605b837c88778e186925d82777"
+
+NOTE="SOURCE_URI/CHECKSUM_SHA256 above are provenance only (what upstream Node source \
+this package's own fixes and packaging are applied onto), not something haikuporter can \
+actually build from with a plain BUILD()/INSTALL(): Node's own build has to run natively \
+on a real RenkuOS arm64 machine (gyp/ninja, plus running the freshly built \
+node_mksnapshot on the target itself), not something haikuporter's usual cross-build-in-a-\
+chroot model supports as-is. Built natively on a Haiku arm64 VM, not cross-built: see scripts/cross-arm64-libuv.sh \
 for the one real dependency fix this needed (a pre-staged libuv was a version behind what \
 this Node release requires, missing uv_thread_setname entirely -- rebuilt from Node's own \
 bundled deps/uv source for an exact version match). The other three bundled runtimes (brotli, \

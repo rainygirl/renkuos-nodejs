@@ -26,6 +26,15 @@ pkgman add-repo https://pkgman.rainygirl.com/arm64   # 시스템당 한 번만
 pkgman install nodejs_bin
 ```
 
+`scripts/smoke-test-nodejs.sh`는 같은 머신에서 돌리는 간단한 설치 후
+점검입니다 — 기본 eval, 데스크탑 세션이 아닌 곳에서의 `Intl`, 그리고
+`npm`/`npx`가 실제로 동작하는지까지, 이 패키지의 revision 2가 고친 바로
+그 경로들입니다.
+
+```sh
+sh scripts/smoke-test-nodejs.sh
+```
+
 ## 빌드하고 패키징하기
 
 Node 자신의 빌드(gyp/ninja, 그리고 방금 빌드한 `node_mksnapshot`을 타깃
