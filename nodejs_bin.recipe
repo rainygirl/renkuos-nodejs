@@ -5,9 +5,11 @@ golang_bin or fastfetch -- Node's own build (gyp/ninja, plus running the freshly
 node_mksnapshot on the target itself to generate the V8 startup snapshot) needs to run \
 natively, not just cross-compile. Bundles libuv, libbrotlicommon/dec/enc and \
 libcares/libnghttp2 runtimes, since those are not separately on this repository and/or \
-not at the version this Node needs; openssl3, icu74 and zlib are left to the base \
+not at the version this Node needs; openssl3 and zlib are left to the base \
 system, which already provides them (confirmed present under /boot/system/lib on the \
-RENKU arm64 image). Revision 2 fixes two issues found stress-testing a real Next.js app \
+RENKU arm64 image). Revision 3 builds and statically links a full ICU \
+(--with-intl=full-icu) instead of depending on the base system's own icu74 -- see below. \
+Revision 2 fixes two issues found stress-testing a real Next.js app \
 over SSH, the only way most users reach this package: (1) this image's icu74 is a \
 bootstrap-only stub, with the real ICU data file at /boot/system/data/icu/74.1 -- only \
 the desktop launch target's SetupEnvironment set ICU_DATA to it, so any Intl use (new \
@@ -37,7 +39,7 @@ add it) and the exact same WASM-backed build succeeds. Confirmed end to end twic
 hook, or nodejs_bin change needed."
 HOMEPAGE="https://nodejs.org/"
 VERSION="24.21.0"
-REVISION="2"
+REVISION="3"
 LICENSE="MIT"
 COPYRIGHT="2009-2026 Node.js contributors"
 ARCHITECTURES_SUPPORTED="arm64"
@@ -84,6 +86,35 @@ renames the real binary to bin/node-real and adds bin/node/bin/npm/bin/npx wrapp
 (export ICU_DATA=/boot/system/data/icu/74.1, exec the real binary) plus a packaged copy of \
 Node's own bundled npm CLI (deps/npm, test/docs/man excluded) staged at lib/node/npm -- \
 fixing Intl crashes and the missing npm/npx under SSH sessions, found stress-testing a real \
-Next.js 15.1.6 app end to end."
+Next.js 15.1.6 app end to end. Revision 3 is the first time this whole pipeline -- V8's own \
+from-scratch Haiku port included -- ran end to end from a clean node-v24.21.0 checkout \
+rather than one carried over, already working, from an earlier session, which surfaced \
+several real gyp/build-system gaps: GYP's own OS-flavor detection had no haiku case at all \
+(tools/gyp/pylib/gyp/common.py's GetFlavorByPlatform(), silently fell back to linux, \
+compiling platform-linux.cc alongside V8's own platform-haiku.cc); nine \
+deps/openssl/*.gypi files hardcode an arm64+Linux-only OS condition and fall through to a \
+mislabeled 'other architectures' branch that actually still links the x86_64 Linux asm \
+config (-m64 and all), and separately hardcode -ldl, which Haiku folds into libroot.so and \
+ships no separate library for; zlib's cpu_features.c only defines cpu_check_features() for \
+an explicit OS allow-list that didn't include haiku, an undefined-reference link failure, \
+fixed by adding ARMV8_OS_HAIKU and treating it like ARMV8_OS_MACOS already is (statically \
+assume the ARMv8.1 crc32/pmull baseline rather than probe for it, correct here for the same \
+reason it's correct on macOS/arm64 -- this port runs under hvf passthrough on real Apple \
+Silicon); c-ares's own headers were staged one directory level deeper than \
+--shared-cares-includes expects; and two missing unversioned .so symlinks (libexecinfo, \
+libicuuc/i18n/data/io) had to be added by hand, since Haiku ships only exact-versioned \
+shared objects, never the bare libfoo.so a devel package normally provides. Revision 3 also \
+switches from --with-intl=system-icu (this image's own icu74 turned out to carry only a \
+132 KB bootstrap-stub libicudata.so.74.1, nowhere near enough locale data -- \
+Intl.DateTimeFormat OOM-crashed inside ICU's own DateTimePatternGeneratorCache) to \
+--with-intl=full-icu, building Node's own bundled deps/icu-small (a full ICU snapshot \
+despite its directory name) from source; the one remaining snag there, configure.py \
+decompressing a bundled .dat.bz2 through Python's bz2 module on an image with no libbz2, \
+was worked around by decompressing that one file out of band with a real bzip2 binary and \
+placing the plain .dat file where configure.py expects it, rather than patching configure.py \
+itself. node-real is accordingly larger (~112 MB vs rev 2's ~73 MB), from the statically \
+linked ICU data; the bundled runtime library set is otherwise unchanged. Verified the same \
+way revision 2 was: a real package swap plus a clean reboot, smoke-test-nodejs.sh passing \
+in full, Intl.DateTimeFormat included."
 
 PREBUILT_PACKAGES="pkgman-repo/prebuilt/arm64/nodejs_bin-$VERSION-$REVISION-arm64.hpkg"
